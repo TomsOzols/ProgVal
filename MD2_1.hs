@@ -7,15 +7,15 @@ listLengthRecursion (head:tail) counter = listLengthRecursion tail (counter + 1)
 listLength :: [a] -> Int
 listLength list = listLengthRecursion list 0
 
-getKeyFromTuple :: (String, String) -> String
+getKeyFromTuple :: (a, a) -> a
 getKeyFromTuple (key, _) = key
 
-getValueFromTuple :: (String, String) -> String
+getValueFromTuple :: (a, a) -> a
 getValueFromTuple (_, value) = value
 
 -- Ideala varianta - te deretu kadu Maybe saveidot, vai ari blaut ka klume.
-takeByKey :: [(String, String)] -> String -> String
-takeByKey [] key = "NOTHING"
+takeByKey :: Eq a => [(a, a)] -> a -> a
+takeByKey [] key = key -- Sheit atstaju mulkibas slinkuma del
 takeByKey (head:tail) key =
     if key == getKeyFromTuple head
         then getValueFromTuple head
@@ -57,18 +57,18 @@ myMapIndexedRecursion function index (head:tail) =
 myMapIndexed :: (a -> Int -> b) -> [a] -> [b]
 myMapIndexed function list = myMapIndexedRecursion function 0 list
 
-equalToTupleKey :: String -> (String, String) -> Bool
+equalToTupleKey :: Eq a => a -> (a, a) -> Bool
 equalToTupleKey compareValue tuple =
     if (getKeyFromTuple tuple) == compareValue
         then True
         else False
 
-constructFromBoth :: (String, String) -> (String, String) -> (String, String)
+constructFromBoth :: (a, a) -> (a, a) -> (a, a)
 constructFromBoth tuple_A tuple_B =
     (getKeyFromTuple tuple_A, getValueFromTuple tuple_B)
 
 -- Vajadzetu atgriezties te un novienkarsot pierakstu. Komentars - gada ironija.
-takeAllWithKey :: [(String, String)] -> (String, String) -> [(String, String)]
+takeAllWithKey :: Eq a => [(a, a)] -> (a, a) -> [(a, a)]
 takeAllWithKey dictionary keyValue =
     myMap
         (constructFromBoth keyValue)
@@ -79,11 +79,11 @@ takeAllWithKey dictionary keyValue =
         ) dictionary)
 
 -- Varetu parveidot uz kadu redukcijas funkciju kas pienem paskaidrojumu tam ka kombinet jaunos sarakstus.
-forEachA :: ((String, String) -> [(String, String)]) -> [(String, String)] -> [(String, String)]
+forEachA :: ((a, a) -> [(a, a)]) -> [(a, a)] -> [(a, a)]
 forEachA function [] = []
 forEachA function (head:tail) = function head ++ forEachA function tail
 
-tupleCompare :: (String, String) -> (String, String) -> Bool
+tupleCompare :: Eq a => (a, a) -> (a, a) -> Bool
 tupleCompare tuple_A tuple_B =
     getKeyFromTuple tuple_A == getKeyFromTuple tuple_B &&
     getValueFromTuple tuple_A == getValueFromTuple tuple_B
@@ -93,53 +93,62 @@ prettyResult value index = (index + 1, value)
 
 -- Pievienoju katru jaunako elementu saraksta sakuma
 -- Noslinkots - atstaju 2 let.
-goTillPA :: [[(String, String)]] -> [[(String, String)]]
-goTillPA (head:tail) =
-    let newDictionary = bb head head in
-        let combined = myUnique tupleCompare (head ++ newDictionary) in
-            if listLength head == listLength combined
-                then (head:tail)
-                else goTillPA (combined:head:tail)
+-- goTillPA :: [[(String, String)]] -> [[(String, String)]]
+-- goTillPA (head:tail) =
+--     let newDictionary = bb head head in
+--         let combined = myUnique tupleCompare (head ++ newDictionary) in
+--             if listLength head == listLength combined
+--                 then (head:tail)
+--                 else goTillPA (combined:head:tail)
 
-
-aa :: [String] -> [(String, String)] -> [String]
+aa :: Eq a => [a] -> [(a, a)] -> [a]
 aa keys dictionary = myUnique (==) (myMap (takeByKey dictionary) keys)
 
 -- Seit drosvien jau diezgan acimredzami ka butu labak definet savu tipu, bet rokas necelas.
-bb :: [(String, String)] -> [(String, String)] -> [(String, String)]
+bb :: Eq a => [(a, a)] -> [(a, a)] -> [(a, a)]
 bb dictionary_A dictionary_B = myUnique (tupleCompare) (forEachA (takeAllWithKey dictionary_B) dictionary_A)
 
 -- Slinkums rakstit un formalizet funkciju kas nosaka kads ir skaitlis P(A)
 -- Bet vismaz idejas limeni - vispirms varam noverot to ka P(A) nekad nebus lielaks par originalas vardnicas elementu skaitu
 -- Talak padomaju, bet neizdomaju.
 -- Bet attiecigi, ja akli laizham algoritmu, P(A) = n, ir lielakais, tad ja |A<n>| == |A<n+1>|, vai vienkarsak, ja nakamaja iteracija nepieaug elementu skaits.
-kk :: [(String, String)] -> [(Int, [(String, String)])]
-kk dictionary = myMapIndexed prettyResult (reverse (goTillPA [dictionary]))
+-- kk :: [(String, String)] -> [(Int, [(String, String)])]
+-- kk dictionary = myMapIndexed prettyResult (reverse (goTillPA [dictionary]))
 
-aaTest :: [String]
-aaTest =
-    aa 
-        ["b", "c", "d", "e", "f"]
-        [("a", "My"), ("b", "cat"), ("c", "ate"), ("d", "my"), ("e", "cat"), ("f", "My")]
-        -- ["ate","my","cat","My"]
+aa1 :: [String]
+aa1 = aa 
+    ["b", "c", "d", "e", "f"]
+    [("a", "My"), ("b", "cat"), ("c", "ate"), ("d", "my"), ("e", "cat"), ("f", "My")]
+    -- ["ate","my","cat","My"]
 
-bbTest :: [(String, String)]
-bbTest =
-    bb
-        [("CAT", "DOG"), ("CAT", "SNAKE"), ("ELEPHANT", "SNAKE")]
-        [("DOG", "MOUSE"), ("DOG", "GIRAFFE"), ("SNAKE", "GIRAFFE")]
-        -- [("CAT","MOUSE"),("CAT","GIRAFFE"),("ELEPHANT","GIRAFFE")]
+aa2 :: [Int]
+aa2 = aa
+    [2, 3, 4, 5, 9, 8]
+    [(1, 100), (2, 200), (3, 300), (4, 200), (5, 600), (6, 700), (9, 1), (8, 5)]
+    -- [300,200,600,1,5]
 
-kkTest :: [(Int, [(String, String)])]
-kkTest = kk [("1","2"),("2","3"),("3","1")]
+bb1 :: [(String, String)]
+bb1 = bb
+    [("CAT", "DOG"), ("CAT", "SNAKE"), ("ELEPHANT", "SNAKE"), ("!", "?"), ("?", "!")]
+    [("DOG", "MOUSE"), ("DOG", "GIRAFFE"), ("SNAKE", "GIRAFFE"), ("?", "PIG")]
+    -- [("CAT","MOUSE"),("CAT","GIRAFFE"),("ELEPHANT","GIRAFFE"),("!","PIG")]
 
-kkTest2 :: [(Int, [(String, String)])]
-kkTest2 = kk [("1","2"),("2","3"),("4","2")]
--- [(1,[("1","2"),("2","3"),("4","2")]),
--- (2,[("1","2"),("2","3"),("4","2"),("1","3"),("4","3")])]
+bb2 :: [(Int, Int)]
+bb2 = bb
+    [(1, 100), (2, 300), (4, 5), (5, 4), (6, 300)]
+    [(300, 1000), (300, 2000), (300, 5000), (5, 8), (5, 100)]
+    -- [(2,1000),(2,2000),(2,5000),(4,8),(4,100),(6,1000),(6,2000),(6,5000)]
 
-kkTest3 :: [(Int, [(String, String)])]
-kkTest3 = kk [("1","2"),("2","3"),("4","1")]
--- [(1,[("1","2"),("2","3"),("4","1")]),
--- (2,[("1","2"),("2","3"),("4","1"),("1","3"),("4","2")]),
--- (3,[("1","2"),("2","3"),("4","1"),("1","3"),("4","2"),("4","3")])]
+-- kkTest :: [(Int, [(String, String)])]
+-- kkTest = kk [("1","2"),("2","3"),("3","1")]
+
+-- kkTest2 :: [(Int, [(String, String)])]
+-- kkTest2 = kk [("1","2"),("2","3"),("4","2")]
+-- -- [(1,[("1","2"),("2","3"),("4","2")]),
+-- -- (2,[("1","2"),("2","3"),("4","2"),("1","3"),("4","3")])]
+
+-- kkTest3 :: [(Int, [(String, String)])]
+-- kkTest3 = kk [("1","2"),("2","3"),("4","1")]
+-- -- [(1,[("1","2"),("2","3"),("4","1")]),
+-- -- (2,[("1","2"),("2","3"),("4","1"),("1","3"),("4","2")]),
+-- -- (3,[("1","2"),("2","3"),("4","1"),("1","3"),("4","2"),("4","3")])]
